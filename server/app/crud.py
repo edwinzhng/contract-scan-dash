@@ -33,5 +33,16 @@ def create_contract(db: Session, contract: schemas.VerifiedContract):
 
 def get_contracts(db: Session, skip: int = 0, limit: int = 100):
     limit = min(limit, MAX_LIMIT)
-    logging.info(db.query(models.Contract).all()[0])
     return db.query(models.Contract).offset(skip).limit(limit).all()
+
+
+def search_contracts(db: Session, query: str, skip: int = 0, limit: int = 100):
+    limit = min(limit, MAX_LIMIT)
+    db.query(models.Contract).filter(models.Contract.__ts_vector__.match(query)).all()
+    return (
+        db.query(models.Contract)
+        .filter(models.Contract.__ts_vector__.match(query))
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )

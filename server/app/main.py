@@ -43,6 +43,16 @@ async def get_contracts(skip: int = 0, limit: int = 100, db: Session = Depends(g
     return contracts
 
 
+@app.get(
+    "/api/contracts/search", status_code=200, response_model=List[VerifiedContract]
+)
+async def get_contracts_search(
+    query: str, skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
+):
+    contracts = crud.search_contracts(db, query, skip=skip, limit=limit)
+    return contracts
+
+
 @app.get("/api/.*", status_code=404, include_in_schema=False)
 def invalid_api():
     return None
