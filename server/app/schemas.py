@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.enums import NetworkID
 
 
-class VerifiedContract(BaseModel):
+class VerifiedContractNoData(BaseModel):
     address: str
     name: str
     compiler: str
@@ -14,7 +14,11 @@ class VerifiedContract(BaseModel):
     verified_date: datetime.date
     network_id: NetworkID
     license: Optional[str]
-    abi: Optional[str]
 
     class Config:
         orm_mode = True
+
+
+class VerifiedContract(VerifiedContractNoData):
+    abi: Optional[str]
+    source_code: Optional[str]

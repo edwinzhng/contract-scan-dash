@@ -1,24 +1,30 @@
 """Create contracts
 
-Revision ID: 2c3b2081b9de
+Revision ID: 72ed3f54a6ca
 Revises: 
-Create Date: 2022-02-09 06:39:12.798582
+Create Date: 2022-02-09 20:41:24.173029
 
 """
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.types import TypeDecorator
+
+Base = declarative_base()
+
+
+class TSVector(TypeDecorator):
+    impl = TSVECTOR
+    cache_ok = True
 
 
 # revision identifiers, used by Alembic.
-revision = "2c3b2081b9de"
+revision = "72ed3f54a6ca"
 down_revision = None
 branch_labels = None
 depends_on = None
-
-
-class TSVector(sa.types.TypeDecorator):
-    impl = sa.dialects.postgresql.TSVECTOR
-    cache_ok = True
 
 
 def upgrade():
@@ -31,16 +37,23 @@ def upgrade():
         sa.Column("version", sa.String(), nullable=False),
         sa.Column("verified_date", sa.Date(), nullable=False),
         sa.Column("abi", sa.TEXT(), nullable=False),
+        sa.Column("source_code", sa.TEXT(), nullable=False),
         sa.Column(
             "network_id",
             sa.Enum("mainnet", "fantom", "arbitrum", name="networkid"),
+            nullable=False,
+        ),
+        sa.Column(
+            "timestamp",
+            postgresql.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
             nullable=False,
         ),
         sa.Column("license", sa.String(), nullable=True),
         sa.Column(
             "__ts_vector__",
             TSVector(),
-            sa.Computed("to_tsvector('simple', abi)", persisted=True),
+            sa.Computed("to_tsvector('simple', abi || source_code)", persisted=True),
             nullable=True,
         ),
         sa.PrimaryKeyConstraint("address"),
@@ -52,7 +65,9 @@ def upgrade():
         unique=False,
         postgresql_using="gin",
     )
-    op.create_index(op.f("ix_contracts_address"), "contracts", ["address"], unique=True)
+    op.create_index(
+        op.f("ix_contracts_address"), "contracts", ["address"], unique=False
+    )
     # ### end Alembic commands ###
 
 

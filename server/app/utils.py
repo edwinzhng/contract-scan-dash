@@ -1,7 +1,8 @@
 import asyncio
+import json
 import logging
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import List, Literal
 
 import requests
 from bs4 import BeautifulSoup
@@ -12,7 +13,7 @@ from app.enums import NetworkID
 from app.schemas import VerifiedContract
 from app.settings import settings
 
-FTMSCAN_CONTRACT_API_URL = "https://api.ftmscan.com/api?module=contract&action=getabi&address={address}&apikey={api_key}"
+FTMSCAN_CONTRACT_API_URL = "https://api.ftmscan.com/api?module=contract&action={action}&address={address}&apikey={api_key}"
 VERIFIED_CONTRACTS_URL = "https://ftmscan.com/contractsVerified/{page}"
 VERIFIED_CONTRACTS_MAX_PAGE = 20
 
@@ -24,12 +25,18 @@ async def scrape_verified_contracts():
         contracts_skipped = 0
         try:
             db = next(get_db())
-            for page in range(0, VERIFIED_CONTRACTS_MAX_PAGE + 1):
+            # Iterate backwards so we store the most recent contracts with the latest timestamp
+            for page in range(VERIFIED_CONTRACTS_MAX_PAGE, 0, -1):
                 contracts = await _scrape_page(page)
                 for contract in contracts:
                     if get_contract(db, contract.address) is None:
-                        abi = await _fetch_abi(contract.address)
+                        abi = await _fetch_contract_data(contract.address, "getabi")
+                        source_code = await _fetch_contract_data(
+                            contract.address, "getsourcecode"
+                        )
+
                         contract.abi = abi
+                        contract.source_code = source_code
                         create_contract(db, contract)
                         contracts_added += 1
                     else:
@@ -41,18 +48,26 @@ async def scrape_verified_contracts():
         await asyncio.sleep(settings.scrape_sleep_sec)
 
 
-async def _fetch_abi(address: str) -> Dict[Any, Any]:
+async def _fetch_contract_data(
+    address: str, action: Literal["getabi", "getsourcecode"]
+) -> str:
     loop = asyncio.get_event_loop()
-    res = await loop.run_in_executor(
-        None,
-        requests.get,
-        FTMSCAN_CONTRACT_API_URL.format(
-            address=address,
-            api_key=settings.ftmscan_api_key,
-        ),
-    )
-    abi = res.json()["result"]
-    return abi
+    # Retry in case of rate limit
+    while True:
+        res = await loop.run_in_executor(
+            None,
+            requests.get,
+            FTMSCAN_CONTRACT_API_URL.format(
+                action=action,
+                address=address,
+                api_key=settings.ftmscan_api_key,
+            ),
+        )
+        data = res.json()["result"]
+        data_str = json.dumps(data)
+        if "rate limit reached" not in data_str.strip().lower():
+            return data_str
+        await asyncio.sleep(1)
 
 
 async def _scrape_page(page: int, network_id: NetworkID = NetworkID.fantom):
