@@ -1,0 +1,45 @@
+version: "3.9"
+services:
+  api:
+    container_name: api
+    build: ./server
+    depends_on:
+      - postgres
+    environment:
+      FTMSCAN_API_KEY: ${FTMSCAN_API_KEY}
+      SCRAPE_SLEEP_SEC: ${SCRAPE_SLEEP_SEC}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+    ports:
+      - "${API_PORT}:${API_PORT}"
+    command:
+      [
+        "uvicorn", "app.main:app",
+        "--host", "${API_HOST}",
+        "--port", "${API_PORT}",
+        "--workers", "${NUM_WORKERS}"
+      ]
+    restart: always
+    volumes:
+      - ./server:/code
+  postgres:
+    container_name: postgres
+    image: "postgres:14.1-alpine"
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    command: postgres -c 'max_connections=256'
+    restart: always
+    volumes:
+      - postgres:/var/lib/postgresql/data
+volumes:
+  postgres:
+    name: postgres_ftm_contract_dash
