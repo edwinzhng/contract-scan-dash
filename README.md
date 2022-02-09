@@ -1,6 +1,6 @@
-# FTM Contract Dash
+# Contract Scan Dash
 
-Alerting dashboard for FTM contracts
+Alerting dashboard for contracts
 
 ## Database
 

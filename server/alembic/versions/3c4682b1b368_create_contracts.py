@@ -1,16 +1,16 @@
 """Create contracts
 
-Revision ID: 09c5bd068caf
+Revision ID: 3c4682b1b368
 Revises: 
-Create Date: 2022-02-09 04:41:16.540674
+Create Date: 2022-02-09 06:02:05.517710
 
 """
 from alembic import op
 import sqlalchemy as sa
-
+from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '09c5bd068caf'
+revision = '3c4682b1b368'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -24,11 +24,12 @@ def upgrade():
     sa.Column('compiler', sa.String(), nullable=False),
     sa.Column('version', sa.String(), nullable=False),
     sa.Column('verified_date', sa.Date(), nullable=False),
-    sa.Column('abi', sa.JSON(), nullable=False),
+    sa.Column('abi', postgresql.JSON(astext_type=sa.Text()), nullable=False),
+    sa.Column('network_id', sa.Enum('mainnet', 'fantom', 'arbitrum', name='networkid'), nullable=False),
     sa.Column('license', sa.String(), nullable=True),
     sa.PrimaryKeyConstraint('address')
     )
-    op.create_index(op.f('ix_contracts_address'), 'contracts', ['address'], unique=True)
+    op.create_index(op.f('ix_contracts_address'), 'contracts', ['address'], unique=False)
     # ### end Alembic commands ###
 
 

@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from app.crud import create_contract, get_contract
 from app.database import get_db
+from app.enums import NetworkID
 from app.schemas import VerifiedContract
 from app.settings import settings
 
@@ -20,6 +21,7 @@ async def scrape_verified_contracts():
     """Scrape new verified contracts on FTMScan"""
     while True:
         contracts_added = 0
+        contracts_skipped = 0
         try:
             db = next(get_db())
             for page in range(0, VERIFIED_CONTRACTS_MAX_PAGE + 1):
@@ -31,13 +33,11 @@ async def scrape_verified_contracts():
                         create_contract(db, contract)
                         contracts_added += 1
                     else:
-                        logging.info(
-                            f"Contract already exists for address {contract.address}"
-                        )
+                        contracts_skipped += 1
         except Exception as e:
             logging.error(e)
 
-        logging.info(f"Added {contracts_added} contracts")
+        logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
         await asyncio.sleep(settings.scrape_sleep_sec)
 
 
@@ -55,7 +55,7 @@ async def _fetch_abi(address: str) -> Dict[Any, Any]:
     return abi
 
 
-async def _scrape_page(page: int):
+async def _scrape_page(page: int, network_id: NetworkID = NetworkID.fantom):
     loop = asyncio.get_event_loop()
     page = await loop.run_in_executor(
         None, requests.get, VERIFIED_CONTRACTS_URL.format(page=page)
@@ -93,6 +93,7 @@ async def _scrape_page(page: int):
                 compiler=compiler,
                 version=version,
                 verified_date=verified_dt,
+                network_id=network_id,
                 license=license if license != "-" else None,
             )
         )

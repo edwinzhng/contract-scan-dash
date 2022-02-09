@@ -22,6 +22,7 @@ def create_contract(db: Session, contract: schemas.VerifiedContract):
         version=contract.compiler,
         verified_date=contract.verified_date,
         abi=contract.abi,
+        network_id=contract.network_id,
         license=contract.license,
     )
     db.add(db_contract)

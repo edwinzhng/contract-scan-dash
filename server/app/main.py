@@ -24,12 +24,12 @@ app.add_middleware(
 )
 
 
-@app.get("/v1/status", status_code=200)
+@app.get("/api/status", status_code=200)
 async def get_status():
     return
 
 
-@app.get("/v1/contract/{address}", status_code=200, response_model=VerifiedContract)
+@app.get("/api/contract/{address}", status_code=200, response_model=VerifiedContract)
 async def get_contract(address: str, db: Session = Depends(get_db)):
     contract = crud.get_contract(db, address=address)
     if not contract:
@@ -37,10 +37,15 @@ async def get_contract(address: str, db: Session = Depends(get_db)):
     return contract
 
 
-@app.get("/v1/contracts/", status_code=200, response_model=List[VerifiedContract])
+@app.get("/api/contracts/", status_code=200, response_model=List[VerifiedContract])
 async def get_contracts(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     contracts = crud.get_contracts(db, skip=skip, limit=limit)
     return contracts
+
+
+@app.get("/api/.*", status_code=404, include_in_schema=False)
+def invalid_api():
+    return None
 
 
 @app.on_event("startup")
