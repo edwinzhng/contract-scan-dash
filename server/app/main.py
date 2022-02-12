@@ -1,15 +1,17 @@
 import asyncio
 import logging
-from typing import List
+from typing import Any, AnyStr, Dict, List
 
-from fastapi import Depends, FastAPI, HTTPException
+import telegram
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app import crud
 from app.database import get_db
-from app.schemas import VerifiedContract, VerifiedContractNoData
-from app.utils import scrape_verified_contracts
+from app.schemas import TelegramUpdate, VerifiedContract, VerifiedContractNoData
+from app.settings import settings
+from app.utils import scrape_verified_contracts, set_telegram_webhook_url
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -84,10 +86,19 @@ async def get_contracts_search(
 
 
 @app.get("/api/.*", status_code=404, include_in_schema=False)
-def invalid_api():
+async def invalid_api():
     return None
+
+
+@app.post(f"/webhook/{settings.telegram_bot_token}", include_in_schema=False)
+async def post_telegram_update(request: Request):
+    body = await request.json()
+    print(body)
+    # if update.message:
+    #     print(update.message.text)
 
 
 @app.on_event("startup")
 async def startup_event():
+    await set_telegram_webhook_url()
     asyncio.create_task(scrape_verified_contracts())

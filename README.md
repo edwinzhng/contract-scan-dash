@@ -14,6 +14,11 @@ Apply migrations
 docker-compose run api alembic upgrade head
 ```
 
+Accessing the container
+```
+docker exec -it postgres sh
+```
+
 ## Deployment
 
 ```

@@ -4,6 +4,7 @@ beautifulsoup4==4.10.0
 fastapi==0.70.1
 psycopg2==2.9.3
 pydantic>=1.8.2
+python-telegram-bot-raw==13.11
 requests==2.27.1
 SQLAlchemy==1.4.31
 uvicorn==0.16.0

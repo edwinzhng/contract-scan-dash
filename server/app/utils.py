@@ -17,6 +17,18 @@ FTMSCAN_CONTRACT_API_URL = "https://api.ftmscan.com/api?module=contract&action={
 VERIFIED_CONTRACTS_URL = "https://ftmscan.com/contractsVerified/{page}"
 VERIFIED_CONTRACTS_MAX_PAGE = 20
 
+TELEGRAM_SET_WEBHOOK_URL = "https://api.telegram.org/bot{token}/setWebhook"
+
+
+async def get_async(url):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, requests.get, url)
+
+
+async def post_async(url, data):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, requests.post, url, data)
+
 
 async def scrape_verified_contracts():
     """Scrape new verified contracts on FTMScan"""
@@ -48,21 +60,31 @@ async def scrape_verified_contracts():
         await asyncio.sleep(settings.scrape_sleep_sec)
 
 
+async def set_telegram_webhook_url():
+    token = settings.telegram_bot_token
+    data = {"url": f"{settings.telegram_webhook_host}/webhook/{token}"}
+    res = await post_async(TELEGRAM_SET_WEBHOOK_URL.format(token=token), data)
+    if res.status_code == 200:
+        logging.info("Successfully set Telegram webhook URL")
+        return
+
+    content = json.loads(res.content.decode("utf-8"))
+    if content.get("description") == "Webhook is already set":
+        return
+    raise Exception("Failed to set Telegram webhook URL", content)
+
+
 async def _fetch_contract_data(
     address: str, action: Literal["getabi", "getsourcecode"]
 ) -> str:
-    loop = asyncio.get_event_loop()
     # Retry in case of rate limit
     while True:
-        res = await loop.run_in_executor(
-            None,
-            requests.get,
-            FTMSCAN_CONTRACT_API_URL.format(
-                action=action,
-                address=address,
-                api_key=settings.ftmscan_api_key,
-            ),
+        ftmscan_url = FTMSCAN_CONTRACT_API_URL.format(
+            action=action,
+            address=address,
+            api_key=settings.ftmscan_api_key,
         )
+        res = await get_async(ftmscan_url)
         data = res.json()["result"]
         data_str = json.dumps(data)
         if "rate limit reached" not in data_str.strip().lower():
@@ -71,11 +93,7 @@ async def _fetch_contract_data(
 
 
 async def _scrape_page(page: int, network_id: NetworkID = NetworkID.fantom):
-    loop = asyncio.get_event_loop()
-    page = await loop.run_in_executor(
-        None, requests.get, VERIFIED_CONTRACTS_URL.format(page=page)
-    )
-
+    page = await get_async(VERIFIED_CONTRACTS_URL.format(page=page))
     soup = BeautifulSoup(page.text, features="html.parser")
 
     # Find index of data in table based on header

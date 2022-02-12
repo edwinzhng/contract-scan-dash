@@ -1,3 +1,4 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models import Contract
@@ -47,7 +48,7 @@ def search_contracts(
     )
     return (
         db.query(Contract)
-        .filter(Contract.__ts_vector__.match(query))
+        .filter(Contract.__ts_vector__.op("@@")(func.plainto_tsquery("simple", query)))
         .order_by(order_clause)
         .offset(skip)
         .limit(limit)
