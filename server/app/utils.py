@@ -17,8 +17,6 @@ FTMSCAN_CONTRACT_API_URL = "https://api.ftmscan.com/api?module=contract&action={
 VERIFIED_CONTRACTS_URL = "https://ftmscan.com/contractsVerified/{page}"
 VERIFIED_CONTRACTS_MAX_PAGE = 20
 
-TELEGRAM_SET_WEBHOOK_URL = "https://api.telegram.org/bot{token}/setWebhook"
-
 
 async def get_async(url):
     loop = asyncio.get_event_loop()
@@ -57,21 +55,12 @@ async def scrape_verified_contracts():
             logging.error(e)
 
         logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
+        await send_telegram_alerts()
         await asyncio.sleep(settings.scrape_sleep_sec)
 
 
-async def set_telegram_webhook_url():
-    token = settings.telegram_bot_token
-    data = {"url": f"{settings.telegram_webhook_host}/webhook/{token}"}
-    res = await post_async(TELEGRAM_SET_WEBHOOK_URL.format(token=token), data)
-    if res.status_code == 200:
-        logging.info("Successfully set Telegram webhook URL")
-        return
-
-    content = json.loads(res.content.decode("utf-8"))
-    if content.get("description") == "Webhook is already set":
-        return
-    raise Exception("Failed to set Telegram webhook URL", content)
+async def send_telegram_alerts():
+    pass
 
 
 async def _fetch_contract_data(

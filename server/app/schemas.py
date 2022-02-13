@@ -23,12 +23,3 @@ class VerifiedContractNoData(BaseModel):
 class VerifiedContract(VerifiedContractNoData):
     abi: Optional[str]
     source_code: Optional[str]
-
-
-class TelegramUpdate(BaseModel):
-    update_id: int
-    message: Optional[telegram.Message]
-    my_chat_member: Optional[telegram.ChatMemberUpdated]
-
-    class Config:
-        arbitrary_types_allowed = True

@@ -1,17 +1,17 @@
 import asyncio
 import logging
-from typing import Any, AnyStr, Dict, List
+from typing import List
 
-import telegram
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from app import crud
+from app.bot import handle_commands, set_telegram_webhook_url
 from app.database import get_db
-from app.schemas import TelegramUpdate, VerifiedContract, VerifiedContractNoData
+from app.schemas import VerifiedContract, VerifiedContractNoData
 from app.settings import settings
-from app.utils import scrape_verified_contracts, set_telegram_webhook_url
+from app.utils import scrape_verified_contracts
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -93,9 +93,20 @@ async def invalid_api():
 @app.post(f"/webhook/{settings.telegram_bot_token}", include_in_schema=False)
 async def post_telegram_update(request: Request):
     body = await request.json()
-    print(body)
-    # if update.message:
-    #     print(update.message.text)
+    message = body.get("message", None)
+    if message:
+        entities = message.get("entities", [])
+        is_command = len(entities) > 0 and entities[0].get("type") == "bot_command"
+        if not is_command:
+            return
+
+        chat_id = int(message["chat"]["id"])
+        text = message["text"]
+        try:
+            handle_commands(chat_id, text)
+        except Exception as e:
+            logging.error(e)
+    return
 
 
 @app.on_event("startup")
