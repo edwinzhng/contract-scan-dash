@@ -9,7 +9,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.bot import send_message
-from app.crud import create_contract, get_contract
+from app.crud import create_contract, get_contract, get_contracts
 from app.database import get_db
 from app.enums import NetworkID
 from app.models import Contract, ContractAlert
@@ -48,14 +48,16 @@ async def scrape_verified_contracts():
                     else:
                         contracts_skipped += 1
         except Exception as e:
-            logging.error(e)
+            logging.error(e.with_traceback())
 
         logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
-        await send_telegram_alerts(new_addresses)
+        if contracts_added > 0:
+            await send_telegram_alerts(new_addresses)
         await asyncio.sleep(settings.scrape_sleep_sec)
 
 
 async def send_telegram_alerts(new_addresses: List[str]):
+    logging.info(f"Sending alerts for {new_addresses}")
     db: Session = next(get_db())
     chat_id_to_alerts = {}
     new_contracts = db.query(Contract).filter(Contract.address.in_(new_addresses))
@@ -86,7 +88,7 @@ async def send_telegram_alerts(new_addresses: List[str]):
                     message += f"  - {match}\n"
             send_message(chat_id, message)
         except Exception as e:
-            logging.error(e)
+            logging.error(e.with_traceback())
 
 
 async def _fetch_contract_data(
