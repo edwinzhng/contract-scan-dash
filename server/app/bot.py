@@ -8,13 +8,13 @@ from telegram.bot import Bot
 from app import crud
 from app.database import get_db
 from app.settings import settings
-from app.utils import post_async
+from app.web import post_async
 
 bot = Bot(token=settings.telegram_bot_token)
 
 
 TELEGRAM_SET_WEBHOOK_URL = "https://api.telegram.org/bot{token}/setWebhook"
-VALID_COMMANDS = ["sub", "unsub", "registered"]
+VALID_COMMANDS = ["start", "sub", "unsub", "registered"]
 
 
 async def set_telegram_webhook_url():
@@ -31,8 +31,10 @@ async def set_telegram_webhook_url():
     raise Exception("Failed to set Telegram webhook URL", content)
 
 
-def send_message(chat_id: int, message: str):
-    bot.send_message(chat_id, message)
+def send_message(chat_id: int, message: str, parse_mode: Optional[str] = "Markdown"):
+    bot.send_message(
+        chat_id, message, parse_mode=parse_mode, disable_web_page_preview=True
+    )
 
 
 def handle_commands(chat_id: int, text: str):
@@ -41,7 +43,9 @@ def handle_commands(chat_id: int, text: str):
         send_message(chat_id, "Unrecognized command 😿")
 
     db = next(get_db())
-    if command == "sub":
+    if command == "start":
+        send_message(chat_id, "hello frens!")
+    elif command == "sub":
         _handle_sub(db, chat_id, args)
     elif command == "unsub":
         _handle_unsub(db, chat_id, args)
@@ -69,9 +73,9 @@ def _handle_sub(db: Session, chat_id: int, args: List[str]):
     keyword = args[0]
     alert = crud.add_contract_alert(db, keyword, chat_id)
     if alert:
-        send_message(chat_id, f'Added alert for "{keyword}"')
+        send_message(chat_id, f"Added alert for `{keyword}`")
     else:
-        send_message(chat_id, f'Alert already exists for "{keyword}"')
+        send_message(chat_id, f"Alert already exists for `{keyword}`")
 
 
 def _handle_unsub(db: Session, chat_id: int, args: List[str]):
@@ -82,9 +86,9 @@ def _handle_unsub(db: Session, chat_id: int, args: List[str]):
     keyword = args[0]
     removed = crud.remove_contract_alert(db, keyword, chat_id)
     if removed:
-        send_message(chat_id, f'Removed alert for "{keyword}"')
+        send_message(chat_id, f"Removed alert for `{keyword}`")
     else:
-        send_message(chat_id, f'No alert exists for "{keyword}"')
+        send_message(chat_id, f"No alert exists for `{keyword}`")
 
 
 def _handle_registered(db: Session, chat_id: int):
@@ -92,6 +96,6 @@ def _handle_registered(db: Session, chat_id: int):
     keywords = [alert.keyword for alert in alerts]
     if len(keywords) > 0:
         keyword_str = ", ".join(keywords)
-        send_message(chat_id, f"Current alerts: [{keyword_str}]")
+        send_message(chat_id, f"Current alerts: `[{keyword_str}]`")
     else:
         send_message(chat_id, f"No alerts registered in this chat")

@@ -46,9 +46,6 @@ class ContractAlert(Base):
     alert_id = Column(Integer, primary_key=True)
     keyword = Column(String, nullable=False, index=True, unique=True)
     chat_ids = Column(ARRAY(Integer), nullable=False)
-    last_alert_time = Column(
-        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
-    )
 
     __table_args__ = (
         Index("ix_contract_alerts__chat_ids", chat_ids, postgresql_using="gin"),

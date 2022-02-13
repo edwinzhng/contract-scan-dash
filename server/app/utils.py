@@ -4,28 +4,22 @@ import logging
 from datetime import datetime
 from typing import List, Literal
 
-import requests
 from bs4 import BeautifulSoup
+from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from app.bot import send_message
 from app.crud import create_contract, get_contract
 from app.database import get_db
 from app.enums import NetworkID
+from app.models import Contract, ContractAlert
 from app.schemas import VerifiedContract
 from app.settings import settings
+from app.web import get_async
 
 FTMSCAN_CONTRACT_API_URL = "https://api.ftmscan.com/api?module=contract&action={action}&address={address}&apikey={api_key}"
 VERIFIED_CONTRACTS_URL = "https://ftmscan.com/contractsVerified/{page}"
 VERIFIED_CONTRACTS_MAX_PAGE = 20
-
-
-async def get_async(url):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, requests.get, url)
-
-
-async def post_async(url, data):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, requests.post, url, data)
 
 
 async def scrape_verified_contracts():
@@ -33,6 +27,7 @@ async def scrape_verified_contracts():
     while True:
         contracts_added = 0
         contracts_skipped = 0
+        new_addresses = []
         try:
             db = next(get_db())
             # Iterate backwards so we store the most recent contracts with the latest timestamp
@@ -49,18 +44,49 @@ async def scrape_verified_contracts():
                         contract.source_code = source_code
                         create_contract(db, contract)
                         contracts_added += 1
+                        new_addresses.append(contract.address)
                     else:
                         contracts_skipped += 1
         except Exception as e:
             logging.error(e)
 
         logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
-        await send_telegram_alerts()
+        await send_telegram_alerts(new_addresses)
         await asyncio.sleep(settings.scrape_sleep_sec)
 
 
-async def send_telegram_alerts():
-    pass
+async def send_telegram_alerts(new_addresses: List[str]):
+    db: Session = next(get_db())
+    chat_id_to_alerts = {}
+    new_contracts = db.query(Contract).filter(Contract.address.in_(new_addresses))
+    for alert in db.query(ContractAlert).filter(ContractAlert.chat_ids != "{}"):
+        try:
+            keyword = alert.keyword
+            matches = new_contracts.filter(
+                Contract.__ts_vector__.op("@@")(func.plainto_tsquery("simple", keyword))
+            ).all()
+            matches = [_format_contract_link(m) for m in matches]
+            if len(matches) == 0:
+                continue
+
+            for chat_id in alert.chat_ids:
+                existing_alerts = chat_id_to_alerts.get(chat_id, [])
+                existing_alerts.append((keyword, matches))
+                chat_id_to_alerts[chat_id] = existing_alerts
+        except Exception as e:
+            logging.error(e.with_traceback())
+
+    for chat_id in chat_id_to_alerts.keys():
+        try:
+            alerts = chat_id_to_alerts[chat_id]
+            message = "*New contracts matching alerts*\n"
+            for keyword, matches in alerts:
+                message += f"`{keyword}`\n"
+                for match in matches:
+                    message += f"  - {match}\n"
+            send_message(chat_id, message)
+        except Exception as e:
+            logging.error(e)
 
 
 async def _fetch_contract_data(
@@ -121,3 +147,9 @@ async def _scrape_page(page: int, network_id: NetworkID = NetworkID.fantom):
         )
 
     return results
+
+
+def _format_contract_link(contract: Contract):
+    url = f"https://ftmscan.com/address/{contract.address}"
+    short_addr = contract.address[0:6] + "..." + contract.address[-4:]
+    return f"[{contract.name} ({short_addr})]({url})"

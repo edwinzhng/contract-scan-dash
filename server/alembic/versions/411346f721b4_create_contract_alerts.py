@@ -23,12 +23,6 @@ def upgrade():
         sa.Column("alert_id", sa.Integer(), nullable=False),
         sa.Column("keyword", sa.String(), nullable=False, unique=True),
         sa.Column("chat_ids", postgresql.ARRAY(sa.Integer()), nullable=False),
-        sa.Column(
-            "last_alert_time",
-            postgresql.TIMESTAMP(timezone=True),
-            server_default=sa.text("now()"),
-            nullable=False,
-        ),
         sa.PrimaryKeyConstraint("alert_id"),
     )
     op.create_index(
