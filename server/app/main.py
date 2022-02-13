@@ -104,7 +104,7 @@ async def post_telegram_update(request: Request):
         try:
             handle_commands(chat_id, text)
         except Exception as e:
-            logging.error(e)
+            logging.error(e.with_traceback())
     return
 
 

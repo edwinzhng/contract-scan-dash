@@ -39,12 +39,12 @@ async def scrape_verified_contracts():
                         source_code = await _fetch_contract_data(
                             contract.address, "getsourcecode"
                         )
-
                         contract.abi = abi
                         contract.source_code = source_code
-                        create_contract(db, contract)
+
+                        db_contract = create_contract(db, contract)
                         contracts_added += 1
-                        new_addresses.append(contract.address)
+                        new_addresses.append(db_contract.address)
                     else:
                         contracts_skipped += 1
         except Exception as e:
@@ -57,7 +57,6 @@ async def scrape_verified_contracts():
 
 
 async def send_telegram_alerts(new_addresses: List[str]):
-    logging.info(f"Sending alerts for {new_addresses}")
     db: Session = next(get_db())
     chat_id_to_alerts = {}
     new_contracts = db.query(Contract).filter(Contract.address.in_(new_addresses))
@@ -71,6 +70,7 @@ async def send_telegram_alerts(new_addresses: List[str]):
             if len(matches) == 0:
                 continue
 
+            logging.info(f"Matches for '{keyword}': {matches}")
             for chat_id in alert.chat_ids:
                 existing_alerts = chat_id_to_alerts.get(chat_id, [])
                 existing_alerts.append((keyword, matches))
@@ -78,7 +78,12 @@ async def send_telegram_alerts(new_addresses: List[str]):
         except Exception as e:
             logging.error(e.with_traceback())
 
-    for chat_id in chat_id_to_alerts.keys():
+    chat_ids = list(chat_id_to_alerts.keys())
+    if len(chat_ids) == 0:
+        return
+
+    logging.info(f"Sending alerts to {chat_ids} for {new_addresses}")
+    for chat_id in chat_ids:
         try:
             alerts = chat_id_to_alerts[chat_id]
             message = "*New contracts matching alerts*\n"
@@ -138,7 +143,7 @@ async def _scrape_page(page: int, network_id: NetworkID = NetworkID.fantom):
         verified_dt = datetime.strptime(dt, "%m/%d/%Y")
         results.append(
             VerifiedContract(
-                address=addr,
+                address=str(addr).lower(),
                 name=name,
                 compiler=compiler,
                 version=version,
