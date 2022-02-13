@@ -60,6 +60,8 @@ def _parse_command(text: str) -> Tuple[Optional[str], List[str]]:
         return None, []
 
     command = tokens[0].strip("/")
+    if "@" in command:
+        command = command.split("@")[0]
     if command in VALID_COMMANDS:
         return command, tokens[1:]
     return None, []

@@ -99,7 +99,6 @@ async def post_telegram_update(request: Request):
         is_command = len(entities) > 0 and entities[0].get("type") == "bot_command"
         if not is_command:
             return
-
         chat_id = int(message["chat"]["id"])
         text = message["text"]
         try:

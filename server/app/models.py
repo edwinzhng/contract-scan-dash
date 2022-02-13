@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Computed, Date, Enum, Index, Integer, String
-from sqlalchemy.dialects.postgresql import ARRAY, TEXT, TIMESTAMP, TSVECTOR
+from sqlalchemy import Column, Computed, Date, Enum, Index, String
+from sqlalchemy.dialects.postgresql import ARRAY, BIGINT, TEXT, TIMESTAMP, TSVECTOR
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy.types import TypeDecorator
@@ -43,9 +43,9 @@ class Contract(Base):
 class ContractAlert(Base):
     __tablename__ = "contract_alerts"
 
-    alert_id = Column(Integer, primary_key=True)
+    alert_id = Column(BIGINT, primary_key=True)
     keyword = Column(String, nullable=False, index=True, unique=True)
-    chat_ids = Column(ARRAY(Integer), nullable=False)
+    chat_ids = Column(ARRAY(BIGINT), nullable=False)
 
     __table_args__ = (
         Index("ix_contract_alerts__chat_ids", chat_ids, postgresql_using="gin"),
