@@ -5,11 +5,10 @@ from datetime import datetime
 from typing import List, Literal
 
 from bs4 import BeautifulSoup
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+import app.crud as crud
 from app.bot import send_message
-from app.crud import create_contract, get_contract, get_contracts
 from app.database import get_db
 from app.enums import NetworkID
 from app.models import Contract, ContractAlert
@@ -34,7 +33,7 @@ async def scrape_verified_contracts():
             for page in range(VERIFIED_CONTRACTS_MAX_PAGE, 0, -1):
                 contracts = await _scrape_page(page)
                 for contract in contracts:
-                    if get_contract(db, contract.address) is None:
+                    if crud.get_contract(db, contract.address) is None:
                         abi = await _fetch_contract_data(contract.address, "getabi")
                         source_code = await _fetch_contract_data(
                             contract.address, "getsourcecode"
@@ -42,13 +41,13 @@ async def scrape_verified_contracts():
                         contract.abi = abi
                         contract.source_code = source_code
 
-                        db_contract = create_contract(db, contract)
+                        db_contract = crud.create_contract(db, contract)
                         contracts_added += 1
                         new_addresses.append(db_contract.address)
                     else:
                         contracts_skipped += 1
         except Exception as e:
-            logging.error(e.with_traceback())
+            logging.error(e)
 
         logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
         if contracts_added > 0:
@@ -59,30 +58,28 @@ async def scrape_verified_contracts():
 async def send_telegram_alerts(new_addresses: List[str]):
     db: Session = next(get_db())
     chat_id_to_alerts = {}
-    new_contracts = db.query(Contract).filter(Contract.address.in_(new_addresses))
+    new_contracts = crud.get_contracts_by_addresses(db, new_addresses)
     for alert in db.query(ContractAlert).filter(ContractAlert.chat_ids != "{}"):
         try:
             keyword = alert.keyword
-            matches = new_contracts.filter(
-                Contract.__ts_vector__.op("@@")(func.plainto_tsquery("simple", keyword))
-            ).all()
-            matches = [_format_contract_link(m) for m in matches]
+            matches = new_contracts.filter(Contract.search(keyword)).all()
             if len(matches) == 0:
                 continue
 
+            matches = [_format_contract_link(m) for m in matches]
             logging.info(f"Matches for '{keyword}': {matches}")
             for chat_id in alert.chat_ids:
                 existing_alerts = chat_id_to_alerts.get(chat_id, [])
                 existing_alerts.append((keyword, matches))
                 chat_id_to_alerts[chat_id] = existing_alerts
         except Exception as e:
-            logging.error(e.with_traceback())
+            logging.error(e)
 
     chat_ids = list(chat_id_to_alerts.keys())
     if len(chat_ids) == 0:
         return
 
-    logging.info(f"Sending alerts to {chat_ids} for {new_addresses}")
+    logging.info(f"Sending alerts to {chat_ids}")
     for chat_id in chat_ids:
         try:
             alerts = chat_id_to_alerts[chat_id]
@@ -93,7 +90,7 @@ async def send_telegram_alerts(new_addresses: List[str]):
                     message += f"  - {match}\n"
             send_message(chat_id, message)
         except Exception as e:
-            logging.error(e.with_traceback())
+            logging.error(e)
 
 
 async def _fetch_contract_data(

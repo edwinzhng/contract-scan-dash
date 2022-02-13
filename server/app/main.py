@@ -12,6 +12,7 @@ from app.database import get_db
 from app.schemas import VerifiedContract, VerifiedContractNoData
 from app.settings import settings
 from app.utils import scrape_verified_contracts
+from app.web import MAX_FETCH_LIMIT
 
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
@@ -54,7 +55,7 @@ async def get_contracts(
     contracts = crud.get_contracts(
         db,
         skip=skip,
-        limit=limit,
+        limit=min(limit, MAX_FETCH_LIMIT),
         most_recent=most_recent,
     )
     if include_contract_data:
@@ -77,7 +78,7 @@ async def get_contracts_search(
         db,
         query,
         skip=skip,
-        limit=limit,
+        limit=min(limit, MAX_FETCH_LIMIT),
         most_recent=most_recent,
     )
     if include_contract_data:
@@ -104,7 +105,7 @@ async def post_telegram_update(request: Request):
         try:
             handle_commands(chat_id, text)
         except Exception as e:
-            logging.error(e.with_traceback())
+            logging.error(e)
     return
 
 

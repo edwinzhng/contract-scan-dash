@@ -39,6 +39,10 @@ class Contract(Base):
         Index("ix_contracts___ts_vector__", __ts_vector__, postgresql_using="gin"),
     )
 
+    @staticmethod
+    def search(query: str):
+        return Contract.__ts_vector__.op("@@")(func.plainto_tsquery("simple", query))
+
 
 class ContractAlert(Base):
     __tablename__ = "contract_alerts"
