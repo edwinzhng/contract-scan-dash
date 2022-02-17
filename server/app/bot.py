@@ -72,7 +72,7 @@ def _handle_sub(db: Session, chat_id: int, args: List[str]):
         send_message(chat_id, "Please provide a keyword to subscribe to")
         return
 
-    keyword = args[0]
+    keyword = " ".join(args)
     alert = crud.add_contract_alert(db, keyword, chat_id)
     if alert:
         send_message(chat_id, f"Added alert for `{keyword}`")
@@ -85,7 +85,7 @@ def _handle_unsub(db: Session, chat_id: int, args: List[str]):
         send_message(chat_id, "Please provide a keyword to unsubscribe to")
         return
 
-    keyword = args[0]
+    keyword = " ".join(args)
     removed = crud.remove_contract_alert(db, keyword, chat_id)
     if removed:
         send_message(chat_id, f"Removed alert for `{keyword}`")
