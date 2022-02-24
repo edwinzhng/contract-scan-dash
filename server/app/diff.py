@@ -43,4 +43,4 @@ def get_base_contract(contract: Contract) -> Union[str, None]:
         close_idx += 1
 
     res = source_str[start_idx : min(close_idx + 1, len(source_str))]
-    return res.strip("\\").replace("\\n", "\n").replace('\\"', '"')
+    return res.strip("\\").replace("\\\\n", "\n").replace('\\\\"', '"')

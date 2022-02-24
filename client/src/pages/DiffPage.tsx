@@ -41,6 +41,11 @@ const DiffPage = () => {
     setLoading(false);
   }, [diffName, diffAddress]);
 
+  const oldContract = diffNameContract?.base_contract;
+  const newContract = addrContract?.base_contract
+    .replaceAll("\\n", "\n")
+    .replaceAll('\\"', '"');
+
   return (
     <DiffPageWrapper>
       {loading && "Loading..."}
@@ -48,8 +53,8 @@ const DiffPage = () => {
       {!loading && !error && (
         <ReactDiffViewer
           useDarkTheme={false}
-          oldValue={diffNameContract?.base_contract}
-          newValue={addrContract?.base_contract}
+          oldValue={oldContract}
+          newValue={newContract}
           leftTitle={diffNameContract?.name}
           rightTitle={addrContract?.name}
           splitView={true}
