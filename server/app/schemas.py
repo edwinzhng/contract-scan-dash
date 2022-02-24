@@ -22,3 +22,9 @@ class VerifiedContractNoData(BaseModel):
 class VerifiedContract(VerifiedContractNoData):
     abi: Optional[str]
     source_code: Optional[str]
+
+
+class ContractCode(BaseModel):
+    name: str
+    base_contract: str
+    # TODO: handle libraries and interfaces
