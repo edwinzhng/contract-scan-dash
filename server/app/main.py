@@ -6,6 +6,8 @@ from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
 from app import crud
@@ -17,6 +19,8 @@ from app.settings import settings
 from app.utils import scrape_verified_contracts
 from app.web import MAX_FETCH_LIMIT
 
+CLIENT_BUILD_PATH = "app/public"
+
 app = FastAPI()
 logging.basicConfig(level=logging.INFO)
 
@@ -27,6 +31,10 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+app.mount(
+    "/static/", StaticFiles(directory=f"{CLIENT_BUILD_PATH}/static"), name="static"
 )
 
 
@@ -115,7 +123,7 @@ async def get_contract_code(
     return contract_code
 
 
-@app.get("/api/.*", status_code=404, include_in_schema=False)
+@app.get("/api/{catchall:path}", status_code=404, include_in_schema=False)
 async def invalid_api():
     return None
 
@@ -136,6 +144,22 @@ async def post_telegram_update(request: Request):
         except Exception as e:
             logging.error(e)
     return
+
+
+@app.get("/", include_in_schema=False)
+def read_index():
+    return FileResponse(f"{CLIENT_BUILD_PATH}/index.html")
+
+
+@app.get("/{catchall:path}", response_class=FileResponse)
+def read_index(request: Request):
+    path = request.path_params["catchall"]
+    file = f"{CLIENT_BUILD_PATH}/{path}"
+    if os.path.exists(file):
+        return FileResponse(file)
+
+    index = f"{CLIENT_BUILD_PATH}/index.html"
+    return FileResponse(index)
 
 
 @app.on_event("startup")
