@@ -1,5 +1,5 @@
 import datetime
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel
 
@@ -26,5 +26,5 @@ class VerifiedContract(VerifiedContractNoData):
 
 class ContractCode(BaseModel):
     name: str
-    base_contract: str
-    # TODO: handle libraries and interfaces
+    code: Dict[str, str]
+    solidity_version: str

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import styled from "styled-components";
-import ReactDiffViewer from "react-diff-viewer";
+import ReactDiffViewer, { DiffMethod } from "react-diff-viewer";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 
@@ -58,6 +58,7 @@ const DiffPage = () => {
           leftTitle={diffNameContract?.name}
           rightTitle={addrContract?.name}
           splitView={true}
+          compareMethod={DiffMethod.TRIMMED_LINES}
         />
       )}{" "}
     </DiffPageWrapper>

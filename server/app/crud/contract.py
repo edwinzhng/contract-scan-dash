@@ -21,7 +21,7 @@ def create_contract(db: Session, contract: VerifiedContract):
         address=contract.address.lower(),
         name=contract.name,
         compiler=contract.compiler,
-        version=contract.compiler,
+        version=contract.version,
         verified_date=contract.verified_date,
         abi=contract.abi,
         source_code=contract.source_code,
