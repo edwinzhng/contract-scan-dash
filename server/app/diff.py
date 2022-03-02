@@ -3,7 +3,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List
 
 from app.models import Contract
 
@@ -39,7 +39,7 @@ def contracts_to_code(source_str: str) -> Dict[str, str]:
     return code
 
 
-def parse_contract_code(contract: Contract) -> Union[str, None]:
+def parse_contract_code(contract: Contract) -> Dict[str, str]:
     source_code_json = json.loads(contract.source_code)[0]["SourceCode"]
     if source_code_json[0] == "{" and source_code_json == "}":
         sources = json.loads(source_code_json[1:-1])

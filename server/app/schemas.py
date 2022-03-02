@@ -27,4 +27,4 @@ class VerifiedContract(VerifiedContractNoData):
 class ContractCode(BaseModel):
     name: str
     code: Dict[str, str]
-    solidity_version: str
+    compiler_version: str

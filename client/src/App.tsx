@@ -4,8 +4,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import DiffPage from "./pages/DiffPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
-import "./App.css";
-
 function App() {
   return (
     <BrowserRouter>

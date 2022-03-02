@@ -99,16 +99,19 @@ async def get_base_contract_code(name: str):
     filedir = f"app/base_contracts/{name}/"
     if not os.path.exists(filedir):
         raise HTTPException(status_code=404, detail="Base contract not found")
-    
+
     files = os.listdir(filedir)
     file_strs = []
     for f in files:
         f_path = os.path.join(filedir, f)
-        if os.path.isfile(f_path):
+        if os.path.isfile(f_path) and f.endswith(".sol"):
             file_strs.append(Path(f_path).read_text())
-    
+
     code = contracts_to_code("\n".join(file_strs))
-    contract_code = ContractCode(name=name, code=code)
+    compiler_version = Path(os.path.join(filedir, "compiler_version.txt")).read_text()
+    contract_code = ContractCode(
+        name=name, code=code, compiler_version=compiler_version
+    )
     return contract_code
 
 
@@ -126,7 +129,9 @@ async def get_contract_code(
     if not code:
         raise HTTPException(status_code=404, detail="Could not parse base contract")
 
-    contract_code = ContractCode(name=contract.name, code=code, solidity_version=contract.version)
+    contract_code = ContractCode(
+        name=contract.name, code=code, compiler_version=contract.version
+    )
     return contract_code
 
 
