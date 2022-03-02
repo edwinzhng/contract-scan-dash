@@ -110,21 +110,25 @@ const DiffPage = () => {
             </DiffWrapper>
           </DiffSection>
 
-          <SubTitle>Shared Interfaces/Libraries</SubTitle>
-          {sharedFiles.map((name) => (
-            <DiffSection key={name}>
-              <DiffTitle>{name}</DiffTitle>
-              <DiffWrapper>
-                <ReactDiffViewer
-                  useDarkTheme={false}
-                  disableWordDiff
-                  oldValue={getContractCode(name, diffNameContract)}
-                  newValue={getContractCode(name, addrContract)}
-                  splitView={true}
-                />
-              </DiffWrapper>
-            </DiffSection>
-          ))}
+          {sharedFiles.length > 0 && (
+            <>
+              <SubTitle>Shared Interfaces/Libraries</SubTitle>
+              {sharedFiles.map((name) => (
+                <DiffSection key={name}>
+                  <DiffTitle>{name}</DiffTitle>
+                  <DiffWrapper>
+                    <ReactDiffViewer
+                      useDarkTheme={false}
+                      disableWordDiff
+                      oldValue={getContractCode(name, diffNameContract)}
+                      newValue={getContractCode(name, addrContract)}
+                      splitView={true}
+                    />
+                  </DiffWrapper>
+                </DiffSection>
+              ))}
+            </>
+          )}
 
           {diffNameUniqueFiles.length > 0 && (
             <>
