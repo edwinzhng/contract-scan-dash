@@ -97,7 +97,7 @@ async def send_telegram_alerts(new_addresses: List[str]):
             for keyword, match_links, diff_links in alerts:
                 message += f"`{keyword}`\n"
                 for match, diff in zip(match_links, diff_links):
-                    message += f"  * {match} -- {diff}\n"
+                    message += f"  - {match}, {diff}\n"
             send_message(chat_id, message)
         except Exception as e:
             logging.error(e)
@@ -109,7 +109,9 @@ async def _fetch_contract_data(
     # Retry in case of rate limit
     while True:
         ftmscan_url = FTMSCAN_CONTRACT_API_URL.format(
-            action=action, address=address, api_key=settings.ftmscan_api_key,
+            action=action,
+            address=address,
+            api_key=settings.ftmscan_api_key,
         )
         res = await get_async(ftmscan_url)
         data = res.json()["result"]
@@ -169,4 +171,4 @@ def _format_contract_link(contract: Contract):
 
 def _format_diff_link(contract: Contract, base_contract_name: str):
     url = f"{DIFF_BASE_URL}?diff_name={base_contract_name}&addr={contract.address}"
-    return f"[Diff]({url}) with {base_contract_name}"
+    return f"[closest diff with {base_contract_name}]({url})"

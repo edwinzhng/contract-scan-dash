@@ -29,7 +29,11 @@ def get_closest_base_contract(new_contracts: List[Contract]) -> List[str]:
         closest_contract_name = os.listdir(BASE_CONTRACTS_PATH)[0]
 
         # Find closest base contract
-        new_code = parse_contract_code(contract)[contract.name]
+        new_code = parse_contract_code(contract).get(contract.name, None)
+        if not new_code:
+            closest_contracts.append(closest_contract_name)
+            continue
+
         for base_contract_name, base_contract in base_contract_name_to_code.items():
             num_diffs = _get_num_diffs(base_contract, new_code)
             if num_diffs < min_diffs:
@@ -42,7 +46,7 @@ def get_closest_base_contract(new_contracts: List[Contract]) -> List[str]:
 
 def contracts_to_code(source_str: str) -> Dict[str, str]:
     # Match any library, interface, or contract names
-    file_regex = r"(library|interface|contract)\s+(\S+)\s*\{"
+    file_regex = r"(library|interface|contract)\s+(\S+)\s*.*\s*\{"
     matches = re.findall(file_regex, source_str)
     code = {}
     for match in matches:
@@ -64,7 +68,7 @@ def parse_contract_code(contract: Contract) -> Dict[str, str]:
 
 
 def _get_code_from_file(source_str: str, type: str, name: str):
-    contract_regex = rf"{type}\s+{name}\s*{{"
+    contract_regex = rf"{type}\s+{name}\s*.*\s*\{{"
     res = re.search(contract_regex, source_str)
     if not res:
         return None
