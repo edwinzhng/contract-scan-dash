@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import app.crud as crud
 from app.bot import send_message
 from app.database import get_db
+from app.diff import get_closest_base_contract
 from app.enums import NetworkID
 from app.models import Contract, ContractAlert
 from app.schemas import VerifiedContract
@@ -19,6 +20,8 @@ from app.web import get_async
 FTMSCAN_CONTRACT_API_URL = "https://api.ftmscan.com/api?module=contract&action={action}&address={address}&apikey={api_key}"
 VERIFIED_CONTRACTS_URL = "https://ftmscan.com/contractsVerified/{page}"
 VERIFIED_CONTRACTS_MAX_PAGE = 20
+
+DIFF_BASE_URL = "https://rocketpooldata.com/diff"
 
 
 async def scrape_verified_contracts():
@@ -50,7 +53,7 @@ async def scrape_verified_contracts():
             logging.error(e)
 
         logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
-        if contracts_added > 0:
+        if contracts_added >= 0:
             await send_telegram_alerts(new_addresses)
         await asyncio.sleep(settings.scrape_sleep_sec)
 
@@ -66,11 +69,18 @@ async def send_telegram_alerts(new_addresses: List[str]):
             if len(matches) == 0:
                 continue
 
-            matches = [_format_contract_link(m) for m in matches]
-            logging.info(f"Matches for '{keyword}': {matches}")
+            match_base_contracts = get_closest_base_contract(matches)
+            diff_links = [
+                _format_diff_link(m, base_contract)
+                for m, base_contract in zip(matches, match_base_contracts)
+            ]
+            match_links = [_format_contract_link(m) for m in matches]
+            logging.info(f"Matches for '{keyword}': {match_links}")
+            logging.info(f"Closest base contracts: {match_base_contracts}")
+
             for chat_id in alert.chat_ids:
                 existing_alerts = chat_id_to_alerts.get(chat_id, [])
-                existing_alerts.append((keyword, matches))
+                existing_alerts.append((keyword, match_links, diff_links))
                 chat_id_to_alerts[chat_id] = existing_alerts
         except Exception as e:
             logging.error(e)
@@ -84,10 +94,10 @@ async def send_telegram_alerts(new_addresses: List[str]):
         try:
             alerts = chat_id_to_alerts[chat_id]
             message = "*New contracts matching alerts*\n"
-            for keyword, matches in alerts:
+            for keyword, match_links, diff_links in alerts:
                 message += f"`{keyword}`\n"
-                for match in matches:
-                    message += f"  - {match}\n"
+                for match, diff in zip(match_links, diff_links):
+                    message += f"  * {match} -- {diff}\n"
             send_message(chat_id, message)
         except Exception as e:
             logging.error(e)
@@ -99,9 +109,7 @@ async def _fetch_contract_data(
     # Retry in case of rate limit
     while True:
         ftmscan_url = FTMSCAN_CONTRACT_API_URL.format(
-            action=action,
-            address=address,
-            api_key=settings.ftmscan_api_key,
+            action=action, address=address, api_key=settings.ftmscan_api_key,
         )
         res = await get_async(ftmscan_url)
         data = res.json()["result"]
@@ -157,3 +165,8 @@ def _format_contract_link(contract: Contract):
     url = f"https://ftmscan.com/address/{contract.address}"
     short_addr = contract.address[0:6] + "..." + contract.address[-4:]
     return f"[{contract.name} ({short_addr})]({url})"
+
+
+def _format_diff_link(contract: Contract, base_contract_name: str):
+    url = f"{DIFF_BASE_URL}?diff_name={base_contract_name}&addr={contract.address}"
+    return f"[Diff]({url}) with {base_contract_name}"
