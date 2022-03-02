@@ -22,8 +22,7 @@ services:
         "uvicorn", "app.main:app",
         "--host", "${API_HOST}",
         "--port", "${API_PORT}",
-        "--workers", "${NUM_WORKERS}",
-        "--reload"
+        "--workers", "${NUM_WORKERS}"
       ]
     restart: always
     volumes:

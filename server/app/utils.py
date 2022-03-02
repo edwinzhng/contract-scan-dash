@@ -53,7 +53,7 @@ async def scrape_verified_contracts():
             logging.error(e)
 
         logging.info(f"Added {contracts_added}, skipped {contracts_skipped} contracts")
-        if contracts_added >= 0:
+        if contracts_added > 0:
             await send_telegram_alerts(new_addresses)
         await asyncio.sleep(settings.scrape_sleep_sec)
 
